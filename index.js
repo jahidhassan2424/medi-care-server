@@ -23,19 +23,66 @@ async function run() {
         await client.connect();
         console.log('DB Connected')
         const serviceCollection = client.db(`mediCareDB`).collection('services');
-
+        const bookingCollection = client.db(`mediCareDB`).collection('booking');
+        // console.log("DB COnnected")
         app.get('/service', async (req, res) => {
             const query = {};
             const cursor = serviceCollection.find(query);
             const result = await cursor.toArray();
             res.send(result);
         })
+
+        app.post('/service', async (req, res) => {
+            const body = req.body;
+            const query = { treatementName: body?.treatementName, date: body?.date, patientName: body?.patientName };
+            const exists = await bookingCollection.findOne(query);
+            if (exists) {
+                return res.send({ success: false, booking: exists })
+            }
+            const result = await bookingCollection.insertOne(body);
+            return res.send({ success: true, result })
+        })
+
+        app.delete('/service', async (req, res) => {
+            const query = {}
+            const result = await bookingCollection.deleteMany(query);
+            res.send(result)
+        })
+
+
+
+        app.get('/available', async (req, res) => {
+            //  Get all services
+            const date = req?.query.date;
+            const services = await serviceCollection.find().toArray();
+
+            // get the booking of that day
+            const query = { formatedDate: date };
+            const bookings = await bookingCollection.find(query).toArray();
+
+            //Step 3: forEach Service
+            services.forEach(service => {
+                const serviceBooking = bookings.filter(book => book.treatementName === service.name)
+                const bookedSlots = serviceBooking.map(book => book.slot);
+                const available = service.slots.filter(slot => !bookedSlots.includes(slot));
+                service.slots = available;
+            })
+            res.send(services)
+        })
+
+        app.get('/booking', async (req, res) => {
+
+        })
+
+
+
+
+
     }
 
     finally {
 
     }
-
 }
 run().catch(console.dir);
 
