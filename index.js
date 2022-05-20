@@ -36,6 +36,17 @@ async function run() {
                 next();
             }
         }
+
+        const verifyAdmin = async (req, res, next) => {
+            const requester = req?.decoded?.email;
+            const requesterAccount = await userCollection.findOne({ email: requester });
+            if (requesterAccount.role === 'admin') {
+                next();
+            }
+            else {
+                return res.status(403).send({ message: "Forbidded" })
+            }
+        }
         app.get('/service', async (req, res) => {
             const query = {};
             const cursor = serviceCollection.find(query).project({ name: 1 });
@@ -90,6 +101,7 @@ async function run() {
             const result = await userCollection.find().toArray();
             res.send(result)
         })
+
         // Update or create user profile
         app.put('/user/:email', async (req, res) => {
             const email = req?.params.email;
@@ -103,6 +115,7 @@ async function run() {
             const token = jwt.sign({ email: email }, process.env.ACCESS_TOKEN_SECRET, { expiresIn: '1d' })
             res.send({ result, token });
         });
+
         // Check is Admin or not
         app.get('/admin/:email', async (req, res) => {
             const email = req?.params.email;
@@ -111,8 +124,9 @@ async function run() {
             res.send({ admin: isAdmin });
 
         })
+
         // Make admin 
-        app.put('/user/admin/:email', verifyJWT, async (req, res) => {
+        app.put('/user/admin/:email', verifyJWT, verifyAdmin, async (req, res) => {
             const email = req?.params.email;
             const requester = req?.decoded?.email;
             const requesterAccount = await userCollection.findOne({ email: requester });
@@ -127,28 +141,25 @@ async function run() {
             else {
                 return res.status(403).send({ message: "Forbidded" })
             }
-        })
-            ;
-        // Remove admin 
-        app.put('/user/remove-admin/:email', verifyJWT, async (req, res) => {
-            const email = req?.params.email;
-            const requester = req?.decoded?.email;
-            const requesterAccount = await userCollection.findOne({ email: requester });
-            if (requesterAccount.role === 'admin') {
-                const filter = { email: email };
-                const updateDoc = {
-                    $set: { role: 'noAdmin' },
-                };
-                const result = await userCollection.updateOne(filter, updateDoc);
-                res.status(200).send(result);
-            }
-            else {
-                return res.status(403).send({ message: "Forbidded" })
-            }
         });
 
 
-        app.post('/doctor', async (req, res) => {
+        // Remove admin 
+        app.put('/user/remove-admin/:email', verifyJWT, verifyAdmin, async (req, res) => {
+            const email = req?.params.email;
+
+            const filter = { email: email };
+            const updateDoc = {
+                $set: { role: 'noAdmin' },
+            };
+            const result = await userCollection.updateOne(filter, updateDoc);
+            res.status(200).send(result);
+
+
+        });
+
+
+        app.post('/doctor', verifyJWT, verifyAdmin, async (req, res) => {
             const doctor = req.body;
             const result = await doctorCollection.insertOne(doctor);
             res.send(result)
