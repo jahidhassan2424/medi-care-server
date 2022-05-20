@@ -17,6 +17,7 @@ async function run() {
         const serviceCollection = client.db(`mediCareDB`).collection('services');
         const bookingCollection = client.db(`mediCareDB`).collection('booking');
         const userCollection = client.db(`mediCareDB`).collection('userCollection');
+        const doctorCollection = client.db(`mediCareDB`).collection('doctors');
         // JWT Function
         function verifyJWT(req, res, next) {
             authHeader = req.headers.authorization;
@@ -37,7 +38,7 @@ async function run() {
         }
         app.get('/service', async (req, res) => {
             const query = {};
-            const cursor = serviceCollection.find(query);
+            const cursor = serviceCollection.find(query).project({ name: 1 });
             const result = await cursor.toArray();
             res.send(result);
         })
@@ -145,6 +146,14 @@ async function run() {
                 return res.status(403).send({ message: "Forbidded" })
             }
         });
+
+
+        app.post('/doctor', async (req, res) => {
+            const doctor = req.body;
+            const result = await doctorCollection.insertOne(doctor);
+            res.send(result)
+        })
+
     }
     finally {
     }
