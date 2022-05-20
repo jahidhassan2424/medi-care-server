@@ -38,7 +38,7 @@ async function run() {
         }
 
         const verifyAdmin = async (req, res, next) => {
-            const requester = req?.decoded?.email;
+            const requester = req?.decoded.email;
             const requesterAccount = await userCollection.findOne({ email: requester });
             if (requesterAccount.role === 'admin') {
                 next();
@@ -84,6 +84,8 @@ async function run() {
             })
             res.send(services)
         })
+
+        // Load all booking
         app.get('/booking', verifyJWT, async (req, res) => {
             const email = req?.query?.email;
             const query = { email: email }
@@ -97,6 +99,18 @@ async function run() {
                 return res.status(403).send({ message: "Forbidded" })
             }
         })
+        // Load user based on ID
+
+        app.get('/booking/:id', verifyJWT, async (req, res) => {
+            const id = req?.params.id;
+            const query = { _id: ObjectId(id) }
+            const result = await bookingCollection.findOne(query);
+            res.send(result)
+        })
+
+
+
+        // Load all user
         app.get('/users', verifyJWT, async (req, res) => {
             const result = await userCollection.find().toArray();
             res.send(result)
@@ -143,7 +157,6 @@ async function run() {
             }
         });
 
-
         // Remove admin 
         app.put('/user/remove-admin/:email', verifyJWT, verifyAdmin, async (req, res) => {
             const email = req?.params.email;
@@ -154,16 +167,44 @@ async function run() {
             };
             const result = await userCollection.updateOne(filter, updateDoc);
             res.status(200).send(result);
-
-
         });
 
+        // Get all doctors
+        app.get('/doctor', verifyJWT, verifyAdmin, async (req, res) => {
+            const result = await doctorCollection.find().toArray();
+            res.send(result)
+        })
 
+        // Create new Doctor
         app.post('/doctor', verifyJWT, verifyAdmin, async (req, res) => {
             const doctor = req.body;
             const result = await doctorCollection.insertOne(doctor);
             res.send(result)
         })
+
+        // Delete a Doctor
+        app.delete('/removeDoctor/:email', verifyJWT, verifyAdmin, async (req, res) => {
+            const email = req.params.email;
+            const query = ({ email: email })
+            const result = await doctorCollection.deleteOne(query);
+            res.send(result)
+        });
+
+        // add price
+        app.post('/input', async (req, res) => {
+
+            const result = await serviceCollection.updateMany();
+            const filter = {};
+            const updateDoc = {
+                $set: { price: 100 }
+            }
+            const abc = await serviceCollection.updateMany(filter, updateDoc);
+            res.send({ message: "done" })
+        }
+        )
+
+
+
 
     }
     finally {
